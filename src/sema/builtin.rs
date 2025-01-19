@@ -36,7 +36,7 @@ pub struct Prototype {
 }
 
 // A list of all Solidity builtins functions
-pub static BUILTIN_FUNCTIONS: Lazy<[Prototype; 27]> = Lazy::new(|| {
+pub static BUILTIN_FUNCTIONS: Lazy<[Prototype; 28]> = Lazy::new(|| {
     [
         Prototype {
             builtin: Builtin::Assert,
@@ -346,6 +346,21 @@ pub static BUILTIN_FUNCTIONS: Lazy<[Prototype; 27]> = Lazy::new(|| {
             target: vec![],
             doc: "Concatenate bytes",
             constant: true,
+        },
+        // This function is adapted from the Soroban SDK Persistent storage API:
+        // https://docs.rs/soroban-sdk/latest/soroban_sdk/storage/struct.Persistent.html#method.extend_ttl
+        Prototype {
+            builtin: Builtin::ExtendPersistentTtl,
+            namespace: None,
+            method: vec![],
+            name: "extendPersistentTTL",
+            params: vec![Type::DynamicBytes, Type::Uint(32), Type::Uint(32)],
+            ret: vec![],
+            target: vec![Target::Soroban],
+            doc:
+                "Extend the TTL of the data under the key if its current TTL is below the threshold",
+            // cannot be invoked in a constant context
+            constant: false,
         },
     ]
 });
