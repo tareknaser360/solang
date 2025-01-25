@@ -93,6 +93,8 @@ impl SorobanEnv {
             args_soroban.push_back(arg)
         }
         println!("args_soroban: {:?}", args_soroban);
+        // To avoid running out of fuel
+        self.env.cost_estimate().budget().reset_unlimited();
         self.env.invoke_contract(addr, &func, args_soroban)
     }
 

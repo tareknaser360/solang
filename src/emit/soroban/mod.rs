@@ -28,6 +28,7 @@ const SOROBAN_ENV_INTERFACE_VERSION: ScEnvMetaEntryInterfaceVersion =
 pub const PUT_CONTRACT_DATA: &str = "l._";
 pub const GET_CONTRACT_DATA: &str = "l.1";
 pub const LOG_FROM_LINEAR_MEMORY: &str = "x._";
+pub const EXTEND_PERSISTENT_TTL: &str = "l.7";
 
 pub struct SorobanTarget;
 
@@ -66,6 +67,12 @@ impl SorobanTarget {
         Self::emit_initializer(&mut binary, ns);
 
         Self::emit_env_meta_entries(context, &mut binary, opt);
+
+        binary.internalize(&[EXTEND_PERSISTENT_TTL]);
+        println!(
+            "Function: {:?}",
+            binary.module.get_function(EXTEND_PERSISTENT_TTL)
+        );
 
         binary
     }
@@ -258,6 +265,17 @@ impl SorobanTarget {
         binary.module.add_function(
             LOG_FROM_LINEAR_MEMORY,
             log_function_ty,
+            Some(Linkage::External),
+        );
+
+        let extend_ttl_ty = binary
+            .context
+            .i64_type()
+            .fn_type(&[ty.into(), ty.into(), ty.into(), ty.into()], false);
+
+        binary.module.add_function(
+            EXTEND_PERSISTENT_TTL,
+            extend_ttl_ty,
             Some(Linkage::External),
         );
     }

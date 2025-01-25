@@ -36,7 +36,6 @@ fn ttl_basic() {
             /// Variable to track the count. Stored in persistent storage
             uint64 public persistent count = 11;
 
-
             /// Extends the TTL for the `count` persistent key to 5000 ledgers
             /// if the current TTL is smaller than 1000 ledgers
             function extend() public {
@@ -52,10 +51,38 @@ fn ttl_basic() {
     let constructor_args: soroban_sdk::Vec<Val> = soroban_sdk::Vec::new(&env.env);
     let address = env.register_contract(wasm, constructor_args);
 
+    // initial TTL
     env.env.as_contract(&address, || {
         let key = env.env.storage().persistent().all().keys().first().unwrap();
         // FIXME: we still have to figure out how to encode the key so for now
         //        we will just use the key directly
         assert_eq!(env.env.storage().persistent().get_ttl(&key), 499);
     });
+
+    // env.invoke_contract(&address, "extend", vec![]);
+
+    // // TTL should now be updated to 5000
+    // env.env.as_contract(&address, || {
+    //     let key = env.env.storage().persistent().all().keys().first().unwrap();
+    //     assert_eq!(env.env.storage().persistent().get_ttl(&key), 5000);
+    // });
+
+    // env.env.ledger().with_mut(|li| {
+    //     li.sequence_number += 5000;
+    // });
+
+    // // TTL should now be reduced to 0
+    // env.env.as_contract(&address, || {
+    //     let key = env.env.storage().persistent().all().keys().first().unwrap();
+    //     assert_eq!(env.env.storage().persistent().get_ttl(&key), 0);
+    // });
+
+    // // Extend the TTL again
+    // env.invoke_contract(&address, "extend", vec![]);
+
+    // // TTL is updated back to 5000
+    // env.env.as_contract(&address, || {
+    //     let key = env.env.storage().persistent().all().keys().first().unwrap();
+    //     assert_eq!(env.env.storage().persistent().get_ttl(&key), 5000);
+    // });
 }

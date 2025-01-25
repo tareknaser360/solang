@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 use crate::codegen::cfg::HashTy;
+use crate::codegen::Builtin;
 use crate::codegen::Expression;
 use crate::emit::binary::Binary;
 use crate::emit::soroban::{
-    SorobanTarget, GET_CONTRACT_DATA, LOG_FROM_LINEAR_MEMORY, PUT_CONTRACT_DATA,
+    SorobanTarget, EXTEND_PERSISTENT_TTL, GET_CONTRACT_DATA, LOG_FROM_LINEAR_MEMORY,
+    PUT_CONTRACT_DATA,
 };
 use crate::emit::ContractArgs;
 use crate::emit::{TargetRuntime, Variable};
@@ -396,7 +398,18 @@ impl<'a> TargetRuntime<'a> for SorobanTarget {
         function: FunctionValue<'b>,
         ns: &Namespace,
     ) -> BasicValueEnum<'b> {
-        unimplemented!()
+        emit_context!(bin);
+
+        match expr {
+            Expression::Builtin {
+                kind: Builtin::ExtendPersistentTtl,
+                ..
+            } => call!(EXTEND_PERSISTENT_TTL, &[])
+                .try_as_basic_value()
+                .left()
+                .unwrap(),
+            _ => unimplemented!(),
+        }
     }
 
     /// Return the return data from an external call (either revert error or return values)
