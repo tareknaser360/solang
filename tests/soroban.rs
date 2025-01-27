@@ -88,6 +88,8 @@ impl SorobanEnv {
     /// Invoke a contract and return the result
     pub fn invoke_contract(&self, addr: &Address, function_name: &str, args: Vec<Val>) -> Val {
         let func = Symbol::new(&self.env, function_name);
+        self.env.cost_estimate().budget().reset_unlimited();
+
         let mut args_soroban = vec![&self.env];
         for arg in args {
             args_soroban.push_back(arg)

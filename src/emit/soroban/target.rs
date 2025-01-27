@@ -4,7 +4,8 @@ use crate::codegen::cfg::HashTy;
 use crate::codegen::Expression;
 use crate::emit::binary::Binary;
 use crate::emit::soroban::{
-    SorobanTarget, GET_CONTRACT_DATA, LOG_FROM_LINEAR_MEMORY, PUT_CONTRACT_DATA,
+    SorobanTarget, EXTEND_CONTRACT_DATA_TTL, GET_CONTRACT_DATA, LOG_FROM_LINEAR_MEMORY,
+    PUT_CONTRACT_DATA,
 };
 use crate::emit::ContractArgs;
 use crate::emit::{TargetRuntime, Variable};
@@ -336,7 +337,74 @@ impl<'a> TargetRuntime<'a> for SorobanTarget {
         first_arg_type: Option<BasicTypeEnum>,
         ns: &Namespace,
     ) -> Option<BasicValueEnum<'a>> {
-        unimplemented!()
+        emit_context!(binary);
+
+        match builtin_func.id.name.as_str() {
+            "extendPersistentTtl" => {
+                let storage_type = storage_type_to_int(&Some(StorageType::Persistent(None)));
+
+                // Sanity check
+                assert_eq!(args.len(), 3, "extendPersistentTtl expects 3 arguments");
+                let k_val = args[0].into_pointer_value();
+                let threshold_u32_val = args[1]
+                    .into_int_value()
+                    .const_cast(binary.context.i64_type(), false);
+                // FIXME: How to XDR encode the value?
+                let threshold_u32_val = binary
+                    .builder
+                    .build_left_shift(
+                        threshold_u32_val,
+                        binary.context.i64_type().const_int(32, false),
+                        "temp",
+                    )
+                    .unwrap();
+                let extend_to_u32_val = args[2].into_int_value();
+
+                // FIXME: This is a workaround for now to just manually encode the values to figure out how to
+                //        to get it to work with the Soroban runtime.
+                let k_val: u64 = 0;
+                let threshold_u32_val: u64 = 4294967296004;
+                let extend_to_u32_val: u64 = 21474836480004;
+
+                let function_value = binary
+                    .module
+                    .get_function(EXTEND_CONTRACT_DATA_TTL)
+                    .unwrap();
+
+                let value = binary
+                    .builder
+                    .build_call(
+                        function_value,
+                        &[
+                            binary.context.i64_type().const_int(k_val, false).into(),
+                            binary
+                                .context
+                                .i64_type()
+                                .const_int(storage_type, false)
+                                .into(),
+                            binary
+                                .context
+                                .i64_type()
+                                .const_int(threshold_u32_val, false)
+                                .into(),
+                            binary
+                                .context
+                                .i64_type()
+                                .const_int(extend_to_u32_val, false)
+                                .into(),
+                        ],
+                        EXTEND_CONTRACT_DATA_TTL,
+                    )
+                    .unwrap()
+                    .try_as_basic_value()
+                    .left()
+                    .unwrap()
+                    .into_int_value();
+
+                None
+            }
+            _ => unimplemented!(),
+        }
     }
 
     /// Calls constructor

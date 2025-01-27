@@ -22,19 +22,21 @@ fn ttl_basic() {
         // Minimum TTL for persistent entries - new persistent (and instance)
         // entries will have this TTL when created.
         li.min_persistent_entry_ttl = 500;
-        // Minimum TTL for temporary entries - new temporary
-        // entries will have this TTL when created.
-        li.min_temp_entry_ttl = 100;
-        // Maximum TTL of any entry. Note, that entries can have their TTL
-        // extended indefinitely, but each extension can be at most
-        // `max_entry_ttl` ledger from the current `sequence_number`.
-        li.max_entry_ttl = 15000;
     });
 
     let wasm = build_solidity(
-        r#"contract counter {
+        r#"
+        import "soroban";
+
+
+        contract counter {
             /// Variable to track the count. Stored in persistent storage
             uint64 public persistent count = 11;
+
+            /// Set value of count to 0
+            function reset() public {
+                count += 1;
+            }
 
             /// Extends the TTL for the `count` persistent key to 5000 ledgers
             /// if the current TTL is smaller than 1000 ledgers
@@ -42,7 +44,7 @@ fn ttl_basic() {
                 // Encode the key into a `bytes` format for the built-in function
                 bytes memory encodedKey = abi.encode("count");
 
-                extendPersistentTTL(encodedKey, 1000, 5000);
+                extendPersistentTtl(encodedKey, 1000, 5000);
             }
         }"#,
     );
@@ -59,11 +61,41 @@ fn ttl_basic() {
         assert_eq!(env.env.storage().persistent().get_ttl(&key), 499);
     });
 
-    // env.invoke_contract(&address, "extend", vec![]);
+    // FIXME: This is getting stuck?
+    env.invoke_contract(&address, "reset", vec![]);
+
+    use soroban_sdk::IntoVal;
+    env.env.as_contract(&address, || {
+        let pres_storage = env.env.storage().persistent().all();
+        println!("Pres storage: {:?}", pres_storage);
+
+        let key = env.env.storage().persistent().all().keys().first().unwrap();
+        // Get value
+        let res: Val = env.env.storage().persistent().get(&key).unwrap();
+        let expected: Val = 11_u64.into_val(&env.env);
+
+        assert!(
+            expected.shallow_eq(&res),
+            "expected: {:?}, got: {:?}",
+            expected,
+            res
+        );
+    });
+
+    // env.invoke_contract(&address, "reset", vec![]);
+
+    // // env.invoke_contract(&address, "extend", vec![]);
 
     // // TTL should now be updated to 5000
     // env.env.as_contract(&address, || {
+    //     // print all keys
+    //     let keys = env.env.storage().persistent().all().keys();
+    //     for key in keys {
+    //         println!("key: {:?}", key);
+    //     }
+
     //     let key = env.env.storage().persistent().all().keys().first().unwrap();
+    //     env.env.storage().persistent().extend_ttl(&key, 1000, 5000);
     //     assert_eq!(env.env.storage().persistent().get_ttl(&key), 5000);
     // });
 

@@ -1652,8 +1652,80 @@ impl Namespace {
     }
 
     pub fn add_soroban_builtins(&mut self) {
-        // TODO: add soroban builtins
+        let loc = pt::Loc::Builtin;
+        let identifier = |name: &str| pt::Identifier {
+            name: name.into(),
+            loc,
+        };
+
+        let file_no = self.files.len();
+        self.files.push(File {
+            path: PathBuf::from("soroban"),
+            line_starts: Vec::new(),
+            cache_no: None,
+            import_no: None,
+        });
+
+        for mut func in [
+            // https://docs.rs/soroban-sdk/latest/soroban_sdk/storage/struct.Persistent.html#method.extend_ttl
+            Function::new(
+                loc,
+                loc,
+                identifier("extendPersistentTtl"),
+                None,
+                Vec::new(),
+                pt::FunctionTy::Function,
+                None,
+                pt::Visibility::Public(Some(loc)),
+                vec![
+                    // In Soroban SDK, the first argument is a generic type, which is not supported in Solidity
+                    // so we are using dynamic bytes here
+                    Parameter {
+                        loc,
+                        id: Some(identifier("key")),
+                        ty: Type::DynamicBytes,
+                        ty_loc: Some(loc),
+                        readonly: false,
+                        indexed: false,
+                        infinite_size: false,
+                        recursive: false,
+                        annotation: None,
+                    },
+                    Parameter {
+                        loc,
+                        id: Some(identifier("threshold")),
+                        ty: Type::Uint(32),
+                        ty_loc: Some(loc),
+                        readonly: false,
+                        indexed: false,
+                        infinite_size: false,
+                        recursive: false,
+                        annotation: None,
+                    },
+                    Parameter {
+                        loc,
+                        id: Some(identifier("extend_to")),
+                        ty: Type::Uint(32),
+                        ty_loc: Some(loc),
+                        readonly: false,
+                        indexed: false,
+                        infinite_size: false,
+                        recursive: false,
+                        annotation: None,
+                    },
+                ],
+                vec![], // No return values
+                self,
+            ),
+        ] {
+            func.has_body = true;
+            let func_no = self.functions.len();
+            let id = identifier(&func.id.name);
+            self.functions.push(func);
+            assert!(self.add_symbol(file_no, None, &id, Symbol::Function(vec![(loc, func_no)])));
+        }
     }
+
     pub fn add_polkadot_builtins(&mut self) {
         let loc = pt::Loc::Builtin;
         let identifier = |name: &str| Identifier {
@@ -1668,24 +1740,6 @@ impl Namespace {
             cache_no: None,
             import_no: None,
         });
-
-        // The Hash type from ink primitives.
-        let type_no = self.user_types.len();
-        self.user_types.push(UserTypeDecl {
-            tags: vec![Tag {
-                loc,
-                tag: "notice".into(),
-                no: 0,
-                value: "The Hash type from ink primitives".into(),
-            }],
-            loc,
-            name: "Hash".into(),
-            ty: Type::Bytes(32),
-            contract: None,
-        });
-
-        let symbol = Symbol::UserType(loc, type_no);
-        assert!(self.add_symbol(file_no, None, &identifier("Hash"), symbol));
 
         // Chain extensions
         for mut func in [
